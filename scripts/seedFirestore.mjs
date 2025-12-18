@@ -1,0 +1,634 @@
+import { initializeApp } from 'firebase/app'
+import {
+  addDoc,
+  collection,
+  doc,
+  getFirestore,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore'
+
+const firebaseConfig = {
+  apiKey: process.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyDyKd1c6VkqDu88QFfxczxkYmhbwjA5jSs',
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'forms-react-app.firebaseapp.com',
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID ?? 'forms-react-app',
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'forms-react-app.firebasestorage.app',
+  messagingSenderId:
+    process.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '196476017256',
+  appId: process.env.VITE_FIREBASE_APP_ID ?? '1:196476017256:web:2a607dc8a53c859a95f9dd',
+  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID ?? 'G-M6Q8HXPVHP',
+}
+
+const includeDemoResponses = process.argv.includes('--with-demo-responses')
+
+const sampleForms = [
+  {
+    id: 'class-4',
+    title: 'कक्षा 4 प्रवेश फ़ॉर्म',
+    description: 'शैक्षणिक वर्ष 2025-26 के लिए प्रवेश जानकारी भरें।',
+    order: 1,
+    fields: [
+      {
+        id: 'student_name',
+        label: 'छात्र का पूरा नाम',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'guardian_contact',
+        label: 'अभिभावक का मोबाइल नंबर',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'preferred_language',
+        label: 'अध्ययन की पसंदीदा भाषा',
+        type: 'radio',
+        options: [
+          { id: 'lang-hindi', label: 'हिंदी', value: 'hindi' },
+          { id: 'lang-english', label: 'अंग्रेज़ी', value: 'english' },
+        ],
+        required: true,
+      },
+      {
+        id: 'hobbies',
+        label: 'रुचियाँ',
+        type: 'checkbox',
+        options: [
+          { id: 'hobby-music', label: 'संगीत', value: 'music' },
+          { id: 'hobby-sports', label: 'खेल', value: 'sports' },
+          { id: 'hobby-reading', label: 'पठन', value: 'reading' },
+        ],
+      },
+      {
+        id: 'notes',
+        label: 'अतिरिक्त जानकारी',
+        type: 'long_text',
+        helperText: 'यदि कोई विशेष आवश्यकता हो तो यहाँ लिखें।',
+      },
+    ],
+    responses: [
+      {
+        student_name: 'आरव वर्मा',
+        guardian_contact: '9876543210',
+        preferred_language: 'hindi',
+        hobbies: ['music', 'sports'],
+        notes: 'दैनिक बस परिवहन चाहिए।',
+      },
+      {
+        student_name: 'सिया कपूर',
+        guardian_contact: '9123456780',
+        preferred_language: 'english',
+        hobbies: ['reading'],
+        notes: 'किसी विशेष आवश्यकता का उल्लेख नहीं।',
+      },
+    ],
+  },
+  {
+    id: 'class-10',
+    title: 'कक्षा 10 परीक्षा तैयारी फ़ॉर्म',
+    description: 'अभ्यास सत्रों के लिए छात्रों की प्राथमिकताएँ दर्ज करें।',
+    order: 2,
+    fields: [
+      {
+        id: 'student_name',
+        label: 'छात्र का नाम',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'optional_subject',
+        label: 'वैकल्पिक विषय',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'subject-sanskrit', label: 'संस्कृत', value: 'sanskrit' },
+          { id: 'subject-computer', label: 'कंप्यूटर विज्ञान', value: 'computer_science' },
+          { id: 'subject-art', label: 'कला', value: 'art' },
+        ],
+      },
+      {
+        id: 'extra_classes',
+        label: 'अतिरिक्त कक्षाएँ चाहिए?',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'extra-yes', label: 'हाँ', value: 'yes' },
+          { id: 'extra-no', label: 'नहीं', value: 'no' },
+        ],
+      },
+      {
+        id: 'preferred_days',
+        label: 'अतिरिक्त कक्षाओं के लिए दिन चुनें',
+        type: 'checkbox',
+        options: [
+          { id: 'day-mon', label: 'सोमवार', value: 'monday' },
+          { id: 'day-wed', label: 'बुधवार', value: 'wednesday' },
+          { id: 'day-fri', label: 'शुक्रवार', value: 'friday' },
+        ],
+      },
+      {
+        id: 'remarks',
+        label: 'टिप्पणी',
+        type: 'long_text',
+      },
+    ],
+    responses: [
+      {
+        student_name: 'कव्या मिश्रा',
+        optional_subject: 'computer_science',
+        extra_classes: 'yes',
+        preferred_days: ['monday', 'wednesday'],
+        remarks: 'अनुभवी शिक्षक की आवश्यकता है।',
+      },
+      {
+        student_name: 'विवान सिंह',
+        optional_subject: 'sanskrit',
+        extra_classes: 'no',
+        preferred_days: ['friday'],
+        remarks: 'शाम के सत्र बेहतर हैं।',
+      },
+    ],
+  },
+  {
+    id: 'grade-4-math-quiz-ramanujan-day',
+    title: 'राष्ट्रीय गणित दिवस, 22 दिसम्बर श्रीनिवास रामानुजन जयंती, कक्षा - चतुर्थ,  विषय - गणित प्रश्नोत्तरी',
+    description:
+      'कक्षा - चतुर्थ, विषय - गणित\nइस प्रश्नोत्तरी में गणित एवं वैदिक गणित से कुल 25 प्रश्न पूछा गया है। प्रत्येक प्रश्न 2 अंक का है, कुल पूर्णांक 50 अंक है। प्रत्येक प्रश्न में चार विकल्प है जिनमें से कोई एक सही है। आप अपने बुद्धि विवेक से किसी एक विकल्प को अवश्य क्लिक करें।',
+    order: 3,
+    fields: [
+      {
+        id: 'participant_name',
+        label: 'भैया/बहन का नाम',
+        helperText: 'यह आवश्यक प्रश्न है।',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'father_name',
+        label: 'पिता का नाम',
+        helperText: 'यह आवश्यक प्रश्न है।',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'grade_section',
+        label: 'कक्षा - चतुर्थ',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'grade-section-a', label: 'अ', value: 'अ' },
+          { id: 'grade-section-b', label: 'ब', value: 'ब' },
+          { id: 'grade-section-c', label: 'स', value: 'स' },
+        ],
+      },
+      {
+        id: 'school_name',
+        label: 'विद्यालय का नाम',
+        helperText: 'यह आवश्यक प्रश्न है।',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'district_name',
+        label: 'जिला का नाम',
+        helperText: 'यह आवश्यक प्रश्न है।',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'state_name',
+        label: 'राज्य का नाम',
+        helperText: 'यह आवश्यक प्रश्न है।',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'mobile_number',
+        label: 'मोबाईल नम्बर',
+        helperText: 'यह आवश्यक प्रश्न है।',
+        type: 'short_text',
+        required: true,
+      },
+      {
+        id: 'q1',
+        label: 'प्रश्न 1. रोमन अंक V को निम्न संख्या से दर्शाया जाता है।',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q1-opt-1', label: '1', value: '1' },
+          { id: 'q1-opt-10', label: '10', value: '10' },
+          { id: 'q1-opt-7', label: '7', value: '7' },
+          { id: 'q1-opt-5', label: '5', value: '5' },
+        ],
+      },
+      {
+        id: 'q2',
+        label: 'प्रश्न 2. 98 का निकटन होगा-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q2-opt-80', label: '80', value: '80' },
+          { id: 'q2-opt-90', label: '90', value: '90' },
+          { id: 'q2-opt-100', label: '100', value: '100' },
+          { id: 'q2-opt-70', label: '70', value: '70' },
+        ],
+      },
+      {
+        id: 'q3',
+        label: 'प्रश्न 3. दो अंको की सबसे बड़ी संख्या है',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q3-opt-10', label: '10', value: '10' },
+          { id: 'q3-opt-99', label: '99', value: '99' },
+          { id: 'q3-opt-22', label: '22', value: '22' },
+          { id: 'q3-opt-88', label: '88', value: '88' },
+        ],
+      },
+      {
+        id: 'q4',
+        label: 'प्रश्न 4. तीन अंको की सबसे छोटी संख्या है',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q4-opt-101', label: '101', value: '101' },
+          { id: 'q4-opt-111', label: '111', value: '111' },
+          { id: 'q4-opt-100', label: '100', value: '100' },
+          { id: 'q4-opt-999', label: '999', value: '999' },
+        ],
+      },
+      {
+        id: 'q5',
+        label: 'प्रश्न 5. साठ हजार दस को अंको में लिखेंगे',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q5-opt-60010', label: '60010', value: '60010' },
+          { id: 'q5-opt-6010', label: '6010', value: '6010' },
+          { id: 'q5-opt-6100', label: '6100', value: '6100' },
+          { id: 'q5-opt-6001', label: '6001', value: '6001' },
+        ],
+      },
+      {
+        id: 'q6',
+        label: 'प्रश्न 6. संख्या 100 का रोमन अंक होगा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q6-opt-x', label: 'X', value: 'X' },
+          { id: 'q6-opt-l', label: 'L', value: 'L' },
+          { id: 'q6-opt-c', label: 'C', value: 'C' },
+          { id: 'q6-opt-d', label: 'D', value: 'D' },
+        ],
+      },
+      {
+        id: 'q7',
+        label: 'प्रश्न 7. संख्या 10 का रोमन अंक होगा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q7-opt-v', label: 'V', value: 'V' },
+          { id: 'q7-opt-c', label: 'C', value: 'C' },
+          { id: 'q7-opt-x', label: 'X', value: 'X' },
+          { id: 'q7-opt-d', label: 'D', value: 'D' },
+        ],
+      },
+      {
+        id: 'q8',
+        label: 'प्रश्न 8.  57 का निकटन मान होगा-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q8-opt-60', label: '60', value: '60' },
+          { id: 'q8-opt-50', label: '50', value: '50' },
+          { id: 'q8-opt-70', label: '70', value: '70' },
+          { id: 'q8-opt-none', label: 'इनमें से कोई नही', value: 'इनमें से कोई नही' },
+        ],
+      },
+      {
+        id: 'q9',
+        label: 'प्रश्न 9. एक अंको की सबसे बड़ी संख्या है',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q9-opt-3', label: '3', value: '3' },
+          { id: 'q9-opt-9', label: '9', value: '9' },
+          { id: 'q9-opt-8', label: '8', value: '8' },
+          { id: 'q9-opt-7', label: '7', value: '7' },
+        ],
+      },
+      {
+        id: 'q10',
+        label: 'प्रश्न 10. चार हजार दो सौ दस को अंको में लिखेंगे',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q10-opt-40210', label: '40210', value: '40210' },
+          { id: 'q10-opt-4012', label: '4012', value: '4012' },
+          { id: 'q10-opt-40120', label: '40120', value: '40120' },
+          { id: 'q10-opt-4210', label: '4210', value: '4210' },
+        ],
+      },
+      {
+        id: 'q11',
+        label: 'प्रश्न 11. राष्ट्रीय गणित दिवस मनाया जाता हैं-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q11-opt-21', label: '21 दिसंबर', value: '21 दिसंबर' },
+          { id: 'q11-opt-22', label: '22 दिसम्बर', value: '22 दिसम्बर' },
+          { id: 'q11-opt-23', label: '23 दिसम्बर', value: '23 दिसम्बर' },
+          { id: 'q11-opt-nov', label: '22 नवम्बर', value: '22 नवम्बर' },
+        ],
+      },
+      {
+        id: 'q12',
+        label: 'प्रश्न 12. 5 का रोमन अंक होगा-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q12-opt-v', label: 'V', value: 'V' },
+          { id: 'q12-opt-vi', label: 'VI', value: 'VI' },
+          { id: 'q12-opt-x', label: 'X', value: 'X' },
+          { id: 'q12-opt-xx', label: 'XX', value: 'XX' },
+        ],
+      },
+      {
+        id: 'q13',
+        label: 'प्रश्न 13. दस दहाई =--------- सैकड़ा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q13-opt-10', label: '10', value: '10' },
+          { id: 'q13-opt-20', label: '20', value: '20' },
+          { id: 'q13-opt-5', label: '5', value: '5' },
+          { id: 'q13-opt-1', label: '1', value: '1' },
+        ],
+      },
+      {
+        id: 'q14',
+        label: 'प्रश्न 14.45 में 5 को कितनी बार घटा सकते हैं-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q14-opt-9', label: '9', value: '9' },
+          { id: 'q14-opt-8', label: '8', value: '8' },
+          { id: 'q14-opt-6', label: '6', value: '6' },
+          { id: 'q14-opt-10', label: '10', value: '10' },
+        ],
+      },
+      {
+        id: 'q15',
+        label: 'प्रश्न 15. 1 घंटा 10 मिनट =-------- होगा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q15-opt-60', label: '60 मिनट', value: '60 मिनट' },
+          { id: 'q15-opt-70', label: '70 मिनट', value: '70 मिनट' },
+          { id: 'q15-opt-80', label: '80 मिनट', value: '80 मिनट' },
+          { id: 'q15-opt-90', label: '90 मिनट', value: '90 मिनट' },
+        ],
+      },
+      {
+        id: 'q16',
+        label: 'प्रश्न 16.एक टोकरी में 25 संतरे हैं, तो ऐसे ही 5 टोकरियों में कितने संतरे होंगे-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q16-opt-225', label: '225', value: '225' },
+          { id: 'q16-opt-325', label: '325', value: '325' },
+          { id: 'q16-opt-125', label: '125', value: '125' },
+          { id: 'q16-opt-425', label: '425', value: '425' },
+        ],
+      },
+      {
+        id: 'q17',
+        label: 'प्रश्न 17. संख्या 999 के पहले आएगा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q17-opt-100', label: '100', value: '100' },
+          { id: 'q17-opt-1000', label: '1000', value: '1000' },
+          { id: 'q17-opt-99910', label: '99910', value: '99910' },
+          { id: 'q17-opt-998', label: '998', value: '998' },
+        ],
+      },
+      {
+        id: 'q18',
+        label: 'प्रश्न 18. 1 लीटर =',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q18-opt-1000', label: '1000 मिलीलीटर', value: '1000 मिलीलीटर' },
+          { id: 'q18-opt-3000', label: '3000 मिलीलीटर', value: '3000 मिलीलीटर' },
+          { id: 'q18-opt-2000', label: '2000 मिलीलीटर', value: '2000 मिलीलीटर' },
+          { id: 'q18-opt-2222', label: '2222 मिलीलीटर', value: '2222 मिलीलीटर' },
+        ],
+      },
+      {
+        id: 'q19',
+        label:
+          'प्रश्न 19. एक डिब्बे में 7 गेंदे रखी जा सकती हैं।बताओ 63 गेंदों को रखने के लिए कितने डिब्बो की जरूरत होगी-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q19-opt-9', label: '9', value: '9' },
+          { id: 'q19-opt-10', label: '10', value: '10' },
+          { id: 'q19-opt-11', label: '11', value: '11' },
+          { id: 'q19-opt-12', label: '12', value: '12' },
+        ],
+      },
+      {
+        id: 'q20',
+        label: 'प्रश्न 20. लीप वर्ष में दिनों की संख्या होता हैं',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q20-opt-365', label: '365', value: '365' },
+          { id: 'q20-opt-364', label: '364', value: '364' },
+          { id: 'q20-opt-370', label: '370', value: '370' },
+          { id: 'q20-opt-366', label: '366', value: '366' },
+        ],
+      },
+      {
+        id: 'q21',
+        label: 'प्रश्न 21. दोपहर 2:00 बजे ,24 घंटे वाली घड़ी के अनुसार समय होगा-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q21-opt-13', label: '13:00 बजे', value: '13:00 बजे' },
+          { id: 'q21-opt-14', label: '14:00 बजे', value: '14:00 बजे' },
+          { id: 'q21-opt-15', label: '15:00 बजे', value: '15:00 बजे' },
+          { id: 'q21-opt-16', label: '16:00 बजे', value: '16:00 बजे' },
+        ],
+      },
+      {
+        id: 'q22',
+        label: 'प्रश्न 22. शून्य की खोज हुआ-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q22-opt-russia', label: 'रूस', value: 'रूस' },
+          { id: 'q22-opt-usa', label: 'अमेरिका', value: 'अमेरिका' },
+          { id: 'q22-opt-india', label: 'भारत', value: 'भारत' },
+          { id: 'q22-opt-arab', label: 'अरब', value: 'अरब' },
+        ],
+      },
+      {
+        id: 'q23',
+        label: 'प्रश्न 23. छः हजार सात सौ इकसठ को अंको में लिखेंगे-',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q23-opt-600761', label: '600761', value: '600761' },
+          { id: 'q23-opt-670061', label: '670061', value: '670061' },
+          { id: 'q23-opt-67610', label: '67610', value: '67610' },
+          { id: 'q23-opt-6761', label: '6761', value: '6761' },
+        ],
+      },
+      {
+        id: 'q24',
+        label: 'प्रश्न 24. 51÷3 = -------होगा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q24-opt-15', label: '15', value: '15' },
+          { id: 'q24-opt-16', label: '16', value: '16' },
+          { id: 'q24-opt-17', label: '17', value: '17' },
+          { id: 'q24-opt-18', label: '18', value: '18' },
+        ],
+      },
+      {
+        id: 'q25',
+        label: 'प्रश्न 25. 5672-3240=-------होगा',
+        type: 'radio',
+        required: true,
+        options: [
+          { id: 'q25-opt-2430', label: '2430', value: '2430' },
+          { id: 'q25-opt-2431', label: '2431', value: '2431' },
+          { id: 'q25-opt-2432', label: '2432', value: '2432' },
+          { id: 'q25-opt-2300', label: '2300', value: '2300' },
+        ],
+      },
+    ],
+    responses: [
+      {
+        participant_name: 'अनन्या शर्मा',
+        father_name: 'रमेश शर्मा',
+        grade_section: 'अ',
+        school_name: 'सरस्वती विद्या मंदिर',
+        district_name: 'वाराणसी',
+        state_name: 'उत्तर प्रदेश',
+        mobile_number: '9898989898',
+        q1: '5',
+        q2: '100',
+        q3: '99',
+        q4: '100',
+        q5: '60010',
+        q6: 'C',
+        q7: 'X',
+        q8: '60',
+        q9: '9',
+        q10: '40210',
+        q11: '22 दिसम्बर',
+        q12: 'V',
+        q13: '1',
+        q14: '9',
+        q15: '70 मिनट',
+        q16: '125',
+        q17: '998',
+        q18: '1000 मिलीलीटर',
+        q19: '9',
+        q20: '366',
+        q21: '14:00 बजे',
+        q22: 'भारत',
+        q23: '6761',
+        q24: '17',
+        q25: '2432',
+      },
+      {
+        participant_name: 'आर्यन वर्मा',
+        father_name: 'सुधीर वर्मा',
+        grade_section: 'ब',
+        school_name: 'ज्ञान दीप पब्लिक स्कूल',
+        district_name: 'लखनऊ',
+        state_name: 'उत्तर प्रदेश',
+        mobile_number: '9911223344',
+        q1: '5',
+        q2: '100',
+        q3: '99',
+        q4: '100',
+        q5: '60010',
+        q6: 'C',
+        q7: 'X',
+        q8: '60',
+        q9: '9',
+        q10: '4210',
+        q11: '22 दिसम्बर',
+        q12: 'V',
+        q13: '1',
+        q14: '9',
+        q15: '70 मिनट',
+        q16: '125',
+        q17: '998',
+        q18: '1000 मिलीलीटर',
+        q19: '9',
+        q20: '366',
+        q21: '14:00 बजे',
+        q22: 'भारत',
+        q23: '6761',
+        q24: '17',
+        q25: '2430',
+      },
+    ],
+  },
+]
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function seed() {
+  const app = initializeApp(firebaseConfig)
+  const db = getFirestore(app)
+
+  console.log(
+    includeDemoResponses
+      ? '⚙️  Seeding Firestore with demo forms and demo responses...'
+      : '⚙️  Seeding Firestore with demo forms (no responses by default)...',
+  )
+
+  for (const form of sampleForms) {
+    console.log(`⏳ Writing form: ${form.id}`)
+
+    await setDoc(
+      doc(db, 'forms', form.id),
+      {
+        title: form.title,
+        description: form.description,
+        order: form.order,
+        fields: form.fields,
+      },
+      { merge: true },
+    )
+
+    if (includeDemoResponses && Array.isArray(form.responses) && form.responses.length > 0) {
+      const responsesRef = collection(db, 'forms', form.id, 'responses')
+
+      for (const response of form.responses) {
+        console.log(`   ↳ Adding response for ${form.id}`)
+        await addDoc(responsesRef, {
+          answers: response,
+          submittedAt: serverTimestamp(),
+        })
+        await delay(250)
+      }
+    }
+  }
+
+  console.log('✅ Seeding complete. Open the app to view demo data.')
+}
+
+seed().then(() => process.exit(0)).catch((error) => {
+  console.error('❌ Seeding failed:', error)
+  process.exit(1)
+})

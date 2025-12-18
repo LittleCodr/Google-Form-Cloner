@@ -1,0 +1,281 @@
+#root {
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.page__header--row {
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .page__header--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.page__title {
+  margin: 0;
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+  font-weight: 700;
+}
+
+.page__subtitle {
+  margin: 0;
+  color: #475569;
+  font-size: 1rem;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.tile {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tile:focus-visible,
+.tile:hover {
+  border-color: #6366f1;
+  box-shadow: 0 12px 32px -16px rgba(79, 70, 229, 0.35);
+  transform: translateY(-2px);
+}
+
+.tile__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.tile__description {
+  margin: 0;
+  color: #55607a;
+  font-size: 0.95rem;
+}
+
+.tile__cta {
+  align-self: flex-start;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 40px -24px rgba(15, 23, 42, 0.45);
+}
+
+@media (min-width: 768px) {
+  .card {
+    padding: 32px 40px;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.stack--gap-md {
+  gap: 16px;
+}
+
+.stack--gap-lg {
+  gap: 24px;
+}
+
+.message {
+  margin: 0;
+  font-size: 1rem;
+  color: #334155;
+}
+
+.message--error {
+  color: #b91c1c;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:hover,
+.button:focus-visible {
+  box-shadow: 0 12px 32px -18px rgba(79, 70, 229, 0.6);
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.button--secondary {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field__label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.field__helper {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.field__required {
+  margin-left: 8px;
+  color: #dc2626;
+}
+
+.field__input,
+.field__textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #cbd5f5;
+  padding: 12px 14px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field__input:focus,
+.field__textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  outline: none;
+}
+
+.field__textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.field__error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.choice-group {
+  display: grid;
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.choice input {
+  width: 18px;
+  height: 18px;
+}
+
+.form-actions {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .form-actions {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+}
+
+.table-wrapper {
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #ffffff;
+}
+
+.table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table thead {
+  background: #eef2ff;
+}
+
+.table th,
+.table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.table td {
+  color: #1f2937;
+}
