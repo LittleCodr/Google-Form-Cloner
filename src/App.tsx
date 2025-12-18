@@ -21,16 +21,26 @@ function NotFoundPage() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PublicHomePage />} />
-        <Route path="/form/:formId" element={<PublicFormPage />} />
-        <Route path="/admin" element={<AdminLoginPage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-          <Route path="/admin/form/:formId" element={<AdminFormResponsesPage />} />
-        </Route>
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+      <div className="app-shell">
+        <Routes>
+          <Route path="/" element={<PublicHomePage />} />
+          <Route path="/form/:formId" element={<PublicFormPage />} />
+          <Route path="/admin" element={<AdminLoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/form/:formId" element={<AdminFormResponsesPage />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+        <footer className="site-footer">
+          <p className="site-footer__text">
+            Made with <span className="site-footer__heart" aria-hidden="true">❤️</span> by Balkishan Agrawal{' '}
+            <a className="site-footer__link" href="https://mayank1406.pro" target="_blank" rel="noreferrer">
+              &lt;mayank1406.pro&gt;
+            </a>
+          </p>
+        </footer>
+      </div>
     </BrowserRouter>
   )
 }

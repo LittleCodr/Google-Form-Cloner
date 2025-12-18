@@ -1,12 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
 :root {
   color: #0f172a;
-  background-color: #f5f7fb;
-  font-family: 'Inter', 'Noto Sans Devanagari', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #f0f4ff;
+  font-family: 'Poppins', 'Inter', 'Noto Sans Devanagari', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 400;
   line-height: 1.6;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --gfc-accent: #7158ff;
+  --gfc-accent-strong: #ff6cab;
+  --gfc-surface: rgba(255, 255, 255, 0.76);
+  --gfc-border: rgba(255, 255, 255, 0.35);
 }
 
 * {
@@ -16,7 +22,12 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f5f7fb 0%, #e8edf5 100%);
+  background: radial-gradient(circle at 5% 10%, rgba(255, 198, 255, 0.5) 0%, transparent 40%),
+    radial-gradient(circle at 95% 20%, rgba(140, 214, 255, 0.45) 0%, transparent 45%),
+    linear-gradient(135deg, rgba(113, 88, 255, 0.15), rgba(255, 108, 171, 0.18)),
+    linear-gradient(180deg, #edf2ff 0%, #f7f9ff 35%, #f0f4ff 100%);
+  background-size: 140% 140%;
+  animation: gfcBackgroundPulse 26s ease-in-out infinite;
 }
 
 a {
@@ -27,4 +38,16 @@ a {
 img {
   display: block;
   max-width: 100%;
+}
+
+@keyframes gfcBackgroundPulse {
+  0% {
+    background-position: 0% 40%, 100% 20%, 0% 0%, 0% 0%;
+  }
+  50% {
+    background-position: 30% 60%, 70% 30%, 100% 100%, 100% 40%;
+  }
+  100% {
+    background-position: 0% 40%, 100% 20%, 0% 0%, 0% 0%;
+  }
 }

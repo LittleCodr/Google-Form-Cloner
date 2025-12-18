@@ -15,12 +15,20 @@ export interface FormField {
   options?: FormFieldOption[]
 }
 
+export interface FormSection {
+  id: string
+  title?: string
+  description?: string
+  fields: FormField[]
+}
+
 export interface FormDefinition {
   id: string
   title: string
   description?: string
   fields: FormField[]
   order?: number
+  sections?: FormSection[]
 }
 
 export interface FormResponse {
