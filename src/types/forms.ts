@@ -1,4 +1,4 @@
-export type FormFieldType = 'short_text' | 'long_text' | 'radio' | 'checkbox'
+export type FormFieldType = 'short_text' | 'long_text' | 'radio' | 'checkbox' | 'dropdown'
 
 export interface FormFieldOption {
   id: string

@@ -17,7 +17,7 @@ import type {
   FormSection,
 } from '../types/forms'
 
-const FIELD_TYPES = new Set(['short_text', 'long_text', 'radio', 'checkbox'])
+const FIELD_TYPES = new Set(['short_text', 'long_text', 'radio', 'checkbox', 'dropdown'])
 const FALLBACK_STORAGE_KEY = 'gfc-local-responses'
 
 type FallbackResponse = {

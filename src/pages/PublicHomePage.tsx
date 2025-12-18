@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FormTile } from '../components/FormTile'
 import { fetchForms } from '../services/forms'
@@ -22,13 +22,48 @@ const highlights = [
   },
 ]
 
+const SHORT_TITLE_BY_ID: Record<string, string> = {
+  'grade-4-math-quiz-ramanujan-day': 'कक्षा - चतुर्थ',
+  'grade-5-math-quiz-ramanujan-day': 'कक्षा - पंचम',
+  'grade-6-math-quiz-ramanujan-day': 'कक्षा - षष्ठ',
+  'grade-7-math-quiz-ramanujan-day': 'कक्षा - सप्तम्',
+  'grade-8-math-quiz-ramanujan-day': 'कक्षा - अष्टम्',
+  'grade-9-math-quiz-ramanujan-day': 'कक्षा - नवम्',
+  'grade-10-math-quiz-ramanujan-day': 'कक्षा - दशम्',
+  'acharya-math-quiz-ramanujan-day': 'आचार्य प्रश्नोत्तरी*',
+}
+
+const MAX_DESCRIPTION_LENGTH = 35
+
+function getDisplayTitle(form: FormDefinition) {
+  return SHORT_TITLE_BY_ID[form.id] ?? form.title
+}
+
+function getDescriptionExcerpt(description?: string) {
+  if (!description) {
+    return undefined
+  }
+
+  const normalized = description.replace(/\s+/g, ' ').trim()
+
+  if (normalized.length <= MAX_DESCRIPTION_LENGTH) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, MAX_DESCRIPTION_LENGTH - 1)}…`
+}
+
 export function PublicHomePage() {
   const [forms, setForms] = useState<FormDefinition[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const primaryForm = useMemo(() => (forms.length > 0 ? forms[0] : null), [forms])
   const liveFormCount = useMemo(() => (loading ? '—' : forms.length.toString()), [forms.length, loading])
+  const formsSectionRef = useRef<HTMLDivElement | null>(null)
+
+  const handleStartClick = () => {
+    formsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -59,17 +94,14 @@ export function PublicHomePage() {
   return (
     <div className="page page--home">
       <section className="hero">
-        <span className="hero__eyebrow">Balkishan Agrawal द्वारा संचालित डिजिटल फ़ॉर्म प्लेटफ़ॉर्म</span>
-        <h1 className="hero__title">हर सबमिशन के लिए तेज़, भरोसेमंद और खूबसूरत अनुभव</h1>
-        <p className="hero__description">
-          स्कूल, कार्यक्रम और क्विज़ के लिए तैयार किया गया यह पोर्टल हिंदी-प्रथम इंटरफ़ेस, स्मार्ट वैलिडेशन और
-          ऑफ़लाइन बैकअप के साथ प्रतिक्रियाओं को सुरक्षित रखता है।
-        </p>
+        <span className="hero__eyebrow">राष्ट्रीय गणित दिवस 2025</span>
+        <h1 className="hero__title">गणित प्रश्नोत्तरी</h1>
+        <p className="hero__description">श्रीनिवास रामानुजन जयंती</p>
         <div className="hero__actions">
-          {primaryForm ? (
-            <Link className="button" to={`/form/${primaryForm.id}`}>
+          {forms.length > 0 ? (
+            <button type="button" className="button" onClick={handleStartClick}>
               फ़ॉर्म भरना शुरू करें
-            </Link>
+            </button>
           ) : (
             <Link className="button" to="/admin">
               एडमिन डैशबोर्ड खोलें
@@ -95,7 +127,7 @@ export function PublicHomePage() {
         </div>
       </section>
 
-      <section className="section section--forms">
+      <section ref={formsSectionRef} className="section section--forms">
         <div className="section__header">
           <h2 className="section__title">लाइव फ़ॉर्म सूची</h2>
           <p className="section__subtitle">
@@ -113,8 +145,8 @@ export function PublicHomePage() {
               {forms.map((form) => (
                 <FormTile
                   key={form.id}
-                  title={form.title}
-                  description={form.description}
+                  title={getDisplayTitle(form)}
+                  description={getDescriptionExcerpt(form.description)}
                   to={`/form/${form.id}`}
                 />
               ))}

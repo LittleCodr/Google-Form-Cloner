@@ -293,6 +293,27 @@ export function PublicFormPage() {
                   </div>
                 ) : null}
 
+                {field.type === 'dropdown' && field.options ? (
+                  <select
+                    id={field.id}
+                    name={field.id}
+                    className="field__input"
+                    value={typeof value === 'string' ? value : ''}
+                    onChange={(event) => handleRadioChange(field.id, event.target.value)}
+                    aria-invalid={Boolean(errorText)}
+                    required={field.required}
+                  >
+                    <option value="" disabled>
+                      विकल्प चुनें
+                    </option>
+                    {field.options.map((option) => (
+                      <option key={option.id} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+
                 {field.type === 'checkbox' && field.options ? (
                   <div className="choice-group" role="group" aria-labelledby={`${field.id}-label`}>
                     {field.options.map((option) => {
