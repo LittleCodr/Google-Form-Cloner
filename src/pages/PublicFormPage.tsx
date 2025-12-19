@@ -13,6 +13,14 @@ type LeaderboardEntry = {
   submittedAt?: Date
 }
 
+type QuestionFeedback = {
+  fieldId: string
+  label: string
+  isCorrect: boolean
+  userAnswer?: string | string[]
+  correctAnswer?: string | string[]
+}
+
 function collectAllFields(form: FormDefinition): FormField[] {
   const fields = [...form.fields]
 
@@ -110,6 +118,14 @@ export function PublicFormPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
   const [scoreUnavailable, setScoreUnavailable] = useState(false)
+  const [questionFeedback, setQuestionFeedback] = useState<QuestionFeedback[]>([])
+
+  const allFields = useMemo(() => {
+    if (!formDefinition) {
+      return [] as FormField[]
+    }
+    return collectAllFields(formDefinition)
+  }, [formDefinition])
 
   useEffect(() => {
     if (!formId) {
@@ -257,6 +273,24 @@ export function PublicFormPage() {
         setScoreUnavailable(true)
       }
 
+      if (scoring.evaluations.length > 0) {
+        const fieldMap = new Map(allFields.map((field) => [field.id, field]))
+        setQuestionFeedback(
+          scoring.evaluations.map((evaluation) => {
+            const field = fieldMap.get(evaluation.fieldId)
+            return {
+              fieldId: evaluation.fieldId,
+              label: field?.label ?? evaluation.fieldId,
+              isCorrect: evaluation.isCorrect,
+              userAnswer: evaluation.userAnswer,
+              correctAnswer: evaluation.correctAnswer,
+            }
+          }),
+        )
+      } else {
+        setQuestionFeedback([])
+      }
+
       try {
         const responses = await fetchFormResponses(formId)
         setLeaderboard(buildLeaderboard(responses, formDefinition))
@@ -293,6 +327,7 @@ export function PublicFormPage() {
     setLeaderboard([])
     setLeaderboardError(null)
     setScoreUnavailable(false)
+    setQuestionFeedback([])
   }
 
   if (loading) {
@@ -324,6 +359,21 @@ export function PublicFormPage() {
   }
 
   if (hasSubmitted) {
+    const formatAnswer = (answer?: string | string[]): string => {
+      if (!answer) {
+        return '—'
+      }
+
+      if (Array.isArray(answer)) {
+        if (answer.length === 0) {
+          return '—'
+        }
+        return answer.join(', ')
+      }
+
+      return answer
+    }
+
     return (
       <div className="page">
         <header className="page__header">
@@ -342,6 +392,33 @@ export function PublicFormPage() {
                 <p>इस फ़ॉर्म के लिए स्वचालित स्कोरिंग उपलब्ध नहीं है।</p>
               ) : (
                 <p>स्कोर का निर्धारण नहीं हो सका।</p>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="stack stack--gap-sm">
+              <h2>आपके जवाब</h2>
+              {scoreUnavailable || questionFeedback.length === 0 ? (
+                <p>इस फ़ॉर्म के लिए विस्तृत प्रतिक्रिया उपलब्ध नहीं है।</p>
+              ) : (
+                <ol className="stack stack--gap-sm">
+                  {questionFeedback.map((item, index) => (
+                    <li key={item.fieldId} className="leaderboard__item">
+                      <div className="stack stack--gap-xs">
+                        <div style={{ fontWeight: 600 }}>
+                          {index + 1}. {item.label}
+                        </div>
+                        <div>
+                          {item.isCorrect ? '✅' : '❌'} आपका उत्तर: {formatAnswer(item.userAnswer)}
+                        </div>
+                        {!item.isCorrect ? (
+                          <div>सही उत्तर: {formatAnswer(item.correctAnswer)}</div>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               )}
             </div>
           </div>
