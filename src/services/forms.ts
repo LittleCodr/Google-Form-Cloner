@@ -15,6 +15,7 @@ import type {
   FormFieldOption,
   FormResponse,
   FormSection,
+  QuizScoring,
 } from '../types/forms'
 
 const FIELD_TYPES = new Set(['short_text', 'long_text', 'radio', 'checkbox', 'dropdown'])
@@ -24,11 +25,35 @@ type FallbackResponse = {
   id: string
   answers: Record<string, unknown>
   submittedAt: string
+  scoring?: QuizScoring
 }
 
 type FallbackBucket = Record<string, FallbackResponse[]>
 
 const memoryFallback = new Map<string, FallbackResponse[]>()
+
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as unknown as T
+  }
+
+  if (value && typeof value === 'object') {
+    if (value instanceof Date) {
+      return value
+    }
+
+    const result: Record<string, unknown> = {}
+    Object.entries(value as Record<string, unknown>).forEach(([key, current]) => {
+      if (current === undefined) {
+        return
+      }
+      result[key] = stripUndefinedDeep(current)
+    })
+    return result as unknown as T
+  }
+
+  return value
+}
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
@@ -71,13 +96,18 @@ function saveFallbackBucket(bucket: FallbackBucket): void {
   }
 }
 
-function appendFallbackResponse(formId: string, answers: Record<string, unknown>): void {
+function appendFallbackResponse(
+  formId: string,
+  answers: Record<string, unknown>,
+  scoring?: QuizScoring,
+): void {
   const bucket = loadFallbackBucket()
   const responseList = bucket[formId] ?? []
   responseList.unshift({
     id: `local-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     answers,
     submittedAt: new Date().toISOString(),
+    scoring,
   })
   bucket[formId] = responseList
   saveFallbackBucket(bucket)
@@ -92,6 +122,7 @@ function readFallbackResponses(formId: string): FormResponse[] {
       id: entry.id,
       answers: entry.answers,
       submittedAt: entry.submittedAt ? new Date(entry.submittedAt) : undefined,
+      scoring: entry.scoring,
     }))
     .sort((a, b) => {
       const aTime = a.submittedAt ? a.submittedAt.getTime() : 0
@@ -150,6 +181,7 @@ export async function fetchFormById(formId: string): Promise<FormDefinition | nu
 export async function submitFormResponse(
   formId: string,
   answers: Record<string, unknown>,
+  scoring?: QuizScoring,
 ): Promise<void> {
   if (!formsById.has(formId)) {
     throw new Error('Form not found')
@@ -157,13 +189,17 @@ export async function submitFormResponse(
 
   try {
     const responsesRef = collection(db, 'forms', formId, 'responses')
+    const sanitizedScoring = scoring ? stripUndefinedDeep(scoring) : undefined
+
     await addDoc(responsesRef, {
       answers,
+      scoring: sanitizedScoring,
       submittedAt: serverTimestamp(),
     })
   } catch (err) {
     console.warn('Falling back to local storage for responses.', err)
-    appendFallbackResponse(formId, answers)
+    const sanitizedScoring = scoring ? stripUndefinedDeep(scoring) : undefined
+    appendFallbackResponse(formId, answers, sanitizedScoring)
   }
 }
 
@@ -183,12 +219,14 @@ export async function fetchFormResponses(formId: string): Promise<FormResponse[]
       const data = docSnapshot.data() as {
         answers?: Record<string, unknown>
         submittedAt?: Timestamp
+        scoring?: QuizScoring
       }
 
       return {
         id: docSnapshot.id,
         answers: data.answers ?? {},
         submittedAt: data.submittedAt ? data.submittedAt.toDate() : undefined,
+        scoring: data.scoring,
       }
     })
   } catch (err) {

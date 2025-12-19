@@ -1,8 +1,92 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchFormById, submitFormResponse } from '../services/forms'
-import type { FormDefinition, FormField } from '../types/forms'
+import { fetchFormById, fetchFormResponses, submitFormResponse } from '../services/forms'
+import { evaluateQuizSubmission } from '../services/quizEvaluator'
+import type { FormDefinition, FormField, FormResponse } from '../types/forms'
+
+type LeaderboardEntry = {
+  id: string
+  name: string
+  score: number
+  maxScore: number
+  submittedAt?: Date
+}
+
+function collectAllFields(form: FormDefinition): FormField[] {
+  const fields = [...form.fields]
+
+  form.sections?.forEach((section) => {
+    section.fields.forEach((field) => {
+      fields.push(field)
+    })
+  })
+
+  return fields
+}
+
+function extractDisplayName(
+  answers: Record<string, unknown>,
+  fields: FormField[],
+): string {
+  const preferredIds = [
+    'participant_name',
+    'student_name',
+    'studentName',
+    'participantName',
+    'name',
+    'full_name',
+  ]
+
+  for (const key of preferredIds) {
+    const value = answers[key]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+  }
+
+  const fallbackField = fields.find((field) => {
+    const matchTarget = `${field.id} ${field.label ?? ''}`.toLowerCase()
+    return matchTarget.includes('नाम') || matchTarget.includes('name')
+  })
+
+  if (fallbackField) {
+    const value = answers[fallbackField.id]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+  }
+
+  return 'प्रतिभागी'
+}
+
+function buildLeaderboard(responses: FormResponse[], form: FormDefinition): LeaderboardEntry[] {
+  const fields = collectAllFields(form)
+
+  const entries = responses
+    .filter((response) => response.scoring && response.scoring.maxScore > 0)
+    .map((response) => {
+      const scoring = response.scoring!
+      return {
+        id: response.id,
+        name: extractDisplayName(response.answers, fields),
+        score: scoring.totalScore,
+        maxScore: scoring.maxScore,
+        submittedAt: response.submittedAt,
+      }
+    })
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score
+      }
+
+      const aTime = a.submittedAt ? a.submittedAt.getTime() : Number.MAX_SAFE_INTEGER
+      const bTime = b.submittedAt ? b.submittedAt.getTime() : Number.MAX_SAFE_INTEGER
+      return aTime - bTime
+    })
+
+  return entries.slice(0, 5)
+}
 
 function getInitialValue(field: FormField): string | string[] {
   if (field.type === 'checkbox') {
@@ -22,6 +106,10 @@ export function PublicFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [scoreSummary, setScoreSummary] = useState<{ total: number; max: number } | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
+  const [scoreUnavailable, setScoreUnavailable] = useState(false)
 
   useEffect(() => {
     if (!formId) {
@@ -158,7 +246,27 @@ export function PublicFormPage() {
         }
       })
 
-      await submitFormResponse(formId, payload)
+      const scoring = await evaluateQuizSubmission(formDefinition, payload)
+      await submitFormResponse(formId, payload, scoring)
+
+      if (scoring.maxScore > 0) {
+        setScoreSummary({ total: scoring.totalScore, max: scoring.maxScore })
+        setScoreUnavailable(false)
+      } else {
+        setScoreSummary(null)
+        setScoreUnavailable(true)
+      }
+
+      try {
+        const responses = await fetchFormResponses(formId)
+        setLeaderboard(buildLeaderboard(responses, formDefinition))
+        setLeaderboardError(null)
+      } catch (leaderboardErr) {
+        console.error(leaderboardErr)
+        setLeaderboard([])
+        setLeaderboardError('लीडरबोर्ड अभी उपलब्ध नहीं है।')
+      }
+
       setHasSubmitted(true)
     } catch (submitErr) {
       console.error(submitErr)
@@ -181,6 +289,10 @@ export function PublicFormPage() {
     setFieldErrors({})
     setHasSubmitted(false)
     setSubmitError(null)
+    setScoreSummary(null)
+    setLeaderboard([])
+    setLeaderboardError(null)
+    setScoreUnavailable(false)
   }
 
   if (loading) {
@@ -219,6 +331,41 @@ export function PublicFormPage() {
           <p className="page__subtitle">आपकी प्रतिक्रिया रिकॉर्ड कर ली गई है।</p>
         </header>
         <div className="stack stack--gap-lg">
+          <div className="card">
+            <div className="stack stack--gap-sm">
+              <h2>आपका स्कोर</h2>
+              {scoreSummary ? (
+                <p>
+                  आपने {scoreSummary.total} में से {scoreSummary.max} अंक प्राप्त किए।
+                </p>
+              ) : scoreUnavailable ? (
+                <p>इस फ़ॉर्म के लिए स्वचालित स्कोरिंग उपलब्ध नहीं है।</p>
+              ) : (
+                <p>स्कोर का निर्धारण नहीं हो सका।</p>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="stack stack--gap-sm">
+              <h2>लीडरबोर्ड</h2>
+              {leaderboard.length > 0 ? (
+                <ol className="stack stack--gap-sm">
+                  {leaderboard.map((entry, index) => (
+                    <li key={entry.id} className="leaderboard__item">
+                      <div className="leaderboard__row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                        <span>{index + 1}. {entry.name}</span>
+                        <span>{entry.score} / {entry.maxScore}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>{leaderboardError ?? 'अब तक स्कोर उपलब्ध नहीं है।'}</p>
+              )}
+            </div>
+          </div>
+
           <button className="button" onClick={() => navigate('/')}>अन्य फ़ॉर्म देखें</button>
           <button className="button button--secondary" onClick={handleReset}>फिर से भरें</button>
         </div>

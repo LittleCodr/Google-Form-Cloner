@@ -15,6 +15,22 @@ export interface FormField {
   options?: FormFieldOption[]
 }
 
+export interface FieldEvaluation {
+  fieldId: string
+  isCorrect: boolean
+  awardedScore: number
+  maxScore: number
+  correctAnswer?: string | string[]
+  userAnswer?: string | string[]
+  feedback?: string
+}
+
+export interface QuizScoring {
+  totalScore: number
+  maxScore: number
+  evaluations: FieldEvaluation[]
+}
+
 export interface FormSection {
   id: string
   title?: string
@@ -35,4 +51,5 @@ export interface FormResponse {
   id: string
   answers: Record<string, unknown>
   submittedAt?: Date
+  scoring?: QuizScoring
 }
