@@ -127,6 +127,20 @@ export function PublicFormPage() {
     return collectAllFields(formDefinition)
   }, [formDefinition])
 
+  const renderRichText = (text?: string) => {
+    if (!text) {
+      return null
+    }
+
+    const hasMarkup = /<\w+/.test(text)
+
+    if (hasMarkup) {
+      return <span dangerouslySetInnerHTML={{ __html: text }} />
+    }
+
+    return text
+  }
+
   useEffect(() => {
     if (!formId) {
       setError('फ़ॉर्म नहीं मिला।')
@@ -407,7 +421,8 @@ export function PublicFormPage() {
                     <li key={item.fieldId} className="leaderboard__item">
                       <div className="stack stack--gap-xs">
                         <div style={{ fontWeight: 600 }}>
-                          {index + 1}. {item.label}
+                          <span>{index + 1}. </span>
+                          {renderRichText(item.label)}
                         </div>
                         <div>
                           {item.isCorrect ? '✅' : '❌'} आपका उत्तर: {formatAnswer(item.userAnswer)}
@@ -468,10 +483,12 @@ export function PublicFormPage() {
             return (
               <div key={field.id} className="field">
                 <label className="field__label" htmlFor={field.id} id={`${field.id}-label`}>
-                  {field.label}
+                  {renderRichText(field.label)}
                   {field.required ? <span className="field__required">*</span> : null}
                 </label>
-                {field.helperText ? <p className="field__helper">{field.helperText}</p> : null}
+                {field.helperText ? (
+                  <p className="field__helper">{renderRichText(field.helperText)}</p>
+                ) : null}
 
                 {field.type === 'short_text' ? (
                   <input
