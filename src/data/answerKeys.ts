@@ -251,3 +251,21 @@ export const quizAnswerKeys: Record<string, AnswerKey> = {
 export function getAnswerKey(form: FormDefinition): AnswerKey | null {
   return quizAnswerKeys[form.id] ?? null
 }
+
+const DEFAULT_POINTS_PER_CORRECT = 1
+
+const quizPointsPerCorrect: Record<string, number> = {
+  'grade-4-math-quiz-ramanujan-day': 2,
+  'grade-5-math-quiz-ramanujan-day': 2,
+  'grade-6-math-quiz-ramanujan-day': 2,
+  'grade-7-math-quiz-ramanujan-day': 2,
+  'grade-8-math-quiz-ramanujan-day': 2,
+  'grade-9-math-quiz-ramanujan-day': 2,
+  'grade-10-quiz': 2,
+  'grade-10-math-quiz-ramanujan-day': 2,
+  'acharya-math-quiz-ramanujan-day': 2,
+}
+
+export function getPointsPerCorrect(form: FormDefinition): number {
+  return quizPointsPerCorrect[form.id] ?? DEFAULT_POINTS_PER_CORRECT
+}

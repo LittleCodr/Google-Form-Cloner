@@ -1,4 +1,4 @@
-import { getAnswerKey } from '../data/answerKeys'
+import { getAnswerKey, getPointsPerCorrect } from '../data/answerKeys'
 import type { FieldEvaluation, FormDefinition, FormField, QuizScoring } from '../types/forms'
 
 function resolveExpectedAnswer(
@@ -88,6 +88,7 @@ function buildEvaluation(
   field: FormField,
   expected: string | string[] | undefined,
   answers: Record<string, unknown>,
+  pointsPerCorrect: number,
 ): FieldEvaluation {
   const rawAnswer = answers[field.id]
 
@@ -113,8 +114,8 @@ function buildEvaluation(
   return {
     fieldId: field.id,
     isCorrect,
-    awardedScore: isCorrect ? 1 : 0,
-    maxScore: 1,
+    awardedScore: isCorrect ? pointsPerCorrect : 0,
+    maxScore: pointsPerCorrect,
     correctAnswer: expected,
     userAnswer,
   }
@@ -126,13 +127,19 @@ export async function evaluateQuizSubmission(
 ): Promise<QuizScoring> {
   const answerKey = getAnswerKey(form)
   const quizFields = collectQuizFields(form)
+  const pointsPerCorrect = getPointsPerCorrect(form)
 
   if (!answerKey) {
-    const evaluations = quizFields.map((field) => buildEvaluation(field, undefined, answers))
+    const evaluations = quizFields.map((field) =>
+      buildEvaluation(field, undefined, answers, pointsPerCorrect),
+    )
     return {
       totalScore: 0,
       maxScore: 0,
       evaluations,
+      correctCount: 0,
+      totalQuestions: evaluations.length,
+      pointsPerQuestion: pointsPerCorrect,
     }
   }
 
@@ -144,13 +151,21 @@ export async function evaluateQuizSubmission(
     )
 
   const evaluations = keyedFields.map((entry) =>
-    buildEvaluation(entry.field, entry.expected, answers),
+    buildEvaluation(entry.field, entry.expected, answers, pointsPerCorrect),
   )
   const totalScore = evaluations.reduce((sum, evaluation) => sum + evaluation.awardedScore, 0)
+  const correctCount = evaluations.reduce(
+    (sum, evaluation) => sum + (evaluation.isCorrect ? 1 : 0),
+    0,
+  )
+  const totalQuestions = evaluations.length
 
   return {
     totalScore,
-    maxScore: evaluations.length,
+    maxScore: totalQuestions * pointsPerCorrect,
     evaluations,
+    correctCount,
+    totalQuestions,
+    pointsPerQuestion: pointsPerCorrect,
   }
 }

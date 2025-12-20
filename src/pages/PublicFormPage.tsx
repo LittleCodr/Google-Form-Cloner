@@ -114,7 +114,16 @@ export function PublicFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [scoreSummary, setScoreSummary] = useState<{ total: number; max: number } | null>(null)
+  const [scoreSummary, setScoreSummary] = useState<
+    | {
+        total: number
+        max: number
+        correctCount: number
+        totalQuestions: number
+        pointsPerQuestion: number
+      }
+    | null
+  >(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
   const [scoreUnavailable, setScoreUnavailable] = useState(false)
@@ -279,8 +288,20 @@ export function PublicFormPage() {
       const scoring = await evaluateQuizSubmission(formDefinition, payload)
       await submitFormResponse(formId, payload, scoring)
 
+      const computedCorrectCount =
+        scoring.correctCount ?? scoring.evaluations.filter((evaluation) => evaluation.isCorrect).length
+      const computedTotalQuestions = scoring.totalQuestions ?? scoring.evaluations.length
+      const computedPointsPerQuestion = scoring.pointsPerQuestion
+        ?? (computedTotalQuestions > 0 ? scoring.maxScore / computedTotalQuestions : 1)
+
       if (scoring.maxScore > 0) {
-        setScoreSummary({ total: scoring.totalScore, max: scoring.maxScore })
+        setScoreSummary({
+          total: scoring.totalScore,
+          max: scoring.maxScore,
+          correctCount: computedCorrectCount,
+          totalQuestions: computedTotalQuestions,
+          pointsPerQuestion: computedPointsPerQuestion,
+        })
         setScoreUnavailable(false)
       } else {
         setScoreSummary(null)
@@ -388,6 +409,15 @@ export function PublicFormPage() {
       return answer
     }
 
+    const scorePercent = scoreSummary && scoreSummary.max > 0
+      ? Math.round((scoreSummary.total / scoreSummary.max) * 100)
+      : 0
+    const allCorrect =
+      !!scoreSummary &&
+      scoreSummary.totalQuestions > 0 &&
+      scoreSummary.correctCount === scoreSummary.totalQuestions
+    const medalIcons = ['🥇', '🥈', '🥉']
+
     return (
       <div className="page">
         <header className="page__header">
@@ -399,9 +429,28 @@ export function PublicFormPage() {
             <div className="stack stack--gap-sm">
               <h2>आपका स्कोर</h2>
               {scoreSummary ? (
-                <p>
-                  आपने {scoreSummary.total} में से {scoreSummary.max} अंक प्राप्त किए।
-                </p>
+                <div className="score-card">
+                  <p className="score-card__primary">
+                    आपने {scoreSummary.total} में से {scoreSummary.max} अंक प्राप्त किए।
+                  </p>
+                  <p className="score-card__secondary">
+                    कुल {scoreSummary.totalQuestions} में से {scoreSummary.correctCount} प्रश्न सही · प्रत्येक प्रश्न {scoreSummary.pointsPerQuestion} अंक का है।
+                  </p>
+                  <div className="score-card__meter" aria-hidden="true">
+                    <div className="score-card__meter-track">
+                      <div
+                        className="score-card__meter-fill"
+                        style={{ width: `${scorePercent}%` }}
+                      />
+                    </div>
+                    <span className="score-card__meter-label">{scorePercent}%</span>
+                  </div>
+                  {allCorrect ? (
+                    <div className="score-card__badge" role="status">
+                      🎉 शत-प्रतिशत! आपने सभी प्रश्न सही दिए।
+                    </div>
+                  ) : null}
+                </div>
               ) : scoreUnavailable ? (
                 <p>इस फ़ॉर्म के लिए स्वचालित स्कोरिंग उपलब्ध नहीं है।</p>
               ) : (
@@ -418,19 +467,27 @@ export function PublicFormPage() {
               ) : (
                 <ol className="stack stack--gap-sm">
                   {questionFeedback.map((item, index) => (
-                    <li key={item.fieldId} className="leaderboard__item">
-                      <div className="stack stack--gap-xs">
-                        <div style={{ fontWeight: 600 }}>
-                          <span>{index + 1}. </span>
-                          {renderRichText(item.label)}
-                        </div>
-                        <div>
-                          {item.isCorrect ? '✅' : '❌'} आपका उत्तर: {formatAnswer(item.userAnswer)}
-                        </div>
-                        {!item.isCorrect ? (
-                          <div>सही उत्तर: {formatAnswer(item.correctAnswer)}</div>
-                        ) : null}
+                    <li
+                      key={item.fieldId}
+                      className={`feedback-item ${item.isCorrect ? 'feedback-item--correct' : 'feedback-item--incorrect'}`}
+                    >
+                      <div className="feedback-item__header">
+                        <span className="feedback-item__number">{index + 1}.</span>
+                        <span className="feedback-item__label">{renderRichText(item.label)}</span>
+                        <span className="feedback-item__status" aria-label={item.isCorrect ? 'सही उत्तर' : 'गलत उत्तर'}>
+                          {item.isCorrect ? '✔️' : '✖️'}
+                        </span>
                       </div>
+                      <div className="feedback-item__body">
+                        <span className="feedback-item__answer-label">आपका उत्तर:</span>
+                        <span>{formatAnswer(item.userAnswer)}</span>
+                      </div>
+                      {!item.isCorrect ? (
+                        <div className="feedback-item__body feedback-item__body--correction">
+                          <span className="feedback-item__answer-label">सही उत्तर:</span>
+                          <span>{formatAnswer(item.correctAnswer)}</span>
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ol>
@@ -445,9 +502,12 @@ export function PublicFormPage() {
                 <ol className="stack stack--gap-sm">
                   {leaderboard.map((entry, index) => (
                     <li key={entry.id} className="leaderboard__item">
-                      <div className="leaderboard__row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                        <span>{index + 1}. {entry.name}</span>
-                        <span>{entry.score} / {entry.maxScore}</span>
+                      <div className="leaderboard__row">
+                        <span className="leaderboard__rank">
+                          {medalIcons[index] ?? `${index + 1}.`}
+                        </span>
+                        <span className="leaderboard__name">{entry.name}</span>
+                        <span className="leaderboard__score">{entry.score} / {entry.maxScore}</span>
                       </div>
                     </li>
                   ))}

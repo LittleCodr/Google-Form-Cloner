@@ -29,6 +29,9 @@ export interface QuizScoring {
   totalScore: number
   maxScore: number
   evaluations: FieldEvaluation[]
+  correctCount?: number
+  totalQuestions?: number
+  pointsPerQuestion?: number
 }
 
 export interface FormSection {
