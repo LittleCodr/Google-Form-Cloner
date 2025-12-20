@@ -1,6 +1,23 @@
 import { getAnswerKey } from '../data/answerKeys'
 import type { FieldEvaluation, FormDefinition, FormField, QuizScoring } from '../types/forms'
 
+function resolveExpectedAnswer(
+  answerKey: Record<string, string | string[]>,
+  fieldId: string,
+): string | string[] | undefined {
+  const direct = answerKey[fieldId]
+  if (direct !== undefined) {
+    return direct
+  }
+
+  const withoutPrefix = fieldId.replace(/^[a-z0-9]+-/i, '')
+  if (withoutPrefix !== fieldId) {
+    return answerKey[withoutPrefix]
+  }
+
+  return undefined
+}
+
 const SUPPORTED_TYPES = new Set(['radio', 'checkbox', 'dropdown', 'short_text', 'long_text'])
 
 function collectQuizFields(form: FormDefinition): FormField[] {
@@ -119,9 +136,16 @@ export async function evaluateQuizSubmission(
     }
   }
 
-  const keyedFields = quizFields.filter((field) => answerKey[field.id] !== undefined)
+  const keyedFields = quizFields
+    .map((field) => ({ field, expected: resolveExpectedAnswer(answerKey, field.id) }))
+    .filter(
+      (entry): entry is { field: FormField; expected: string | string[] } =>
+        entry.expected !== undefined,
+    )
 
-  const evaluations = keyedFields.map((field) => buildEvaluation(field, answerKey[field.id], answers))
+  const evaluations = keyedFields.map((entry) =>
+    buildEvaluation(entry.field, entry.expected, answers),
+  )
   const totalScore = evaluations.reduce((sum, evaluation) => sum + evaluation.awardedScore, 0)
 
   return {
