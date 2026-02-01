@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchFormById, fetchFormResponses } from '../services/forms'
 import type { FormDefinition, FormResponse } from '../types/forms'
+import { exportResponsesToWorkbook } from '../utils/exportFormResponses'
 
 const formatter = new Intl.DateTimeFormat('hi-IN', {
   dateStyle: 'medium',
@@ -55,6 +56,14 @@ export function AdminFormResponsesPage() {
 
   const columns = useMemo(() => formDefinition?.fields ?? [], [formDefinition])
 
+  const handleExport = useCallback(() => {
+    if (!formDefinition || responses.length === 0) {
+      return
+    }
+
+    exportResponsesToWorkbook({ formDefinition, responses })
+  }, [formDefinition, responses])
+
   const renderAnswer = (answer: unknown): string => {
     if (Array.isArray(answer)) {
       return answer.join(', ')
@@ -104,9 +113,14 @@ export function AdminFormResponsesPage() {
           <h1 className="page__title">{formDefinition.title}</h1>
           <p className="page__subtitle">कुल जवाब: {responses.length}</p>
         </div>
-        <button className="button button--secondary" onClick={() => navigate('/admin/dashboard')}>
-          सभी फ़ॉर्म
-        </button>
+        <div className="page__header-actions">
+          <button className="button" onClick={handleExport} disabled={responses.length === 0}>
+            जवाब डाउनलोड करें
+          </button>
+          <button className="button button--secondary" onClick={() => navigate('/admin/dashboard')}>
+            सभी फ़ॉर्म
+          </button>
+        </div>
       </header>
 
       {responses.length === 0 ? (

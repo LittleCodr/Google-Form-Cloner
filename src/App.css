@@ -41,11 +41,22 @@
   gap: 16px;
 }
 
+.page__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
 @media (min-width: 640px) {
   .page__header--row {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .page__header-actions {
+    justify-content: flex-end;
   }
 }
 
